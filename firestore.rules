@@ -1,0 +1,147 @@
+// ============================================================
+//  firestore.rules
+//  JaliscoRecicla – Cloud Firestore Security Rules
+//  Deploy with:  firebase deploy --only firestore:rules
+// ============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── HELPER FUNCTIONS ─────────────────────────────────────
+
+    // Is the request from a signed-in user?
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Is the requesting user the document owner?
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Is the requesting user an administrator?
+    // Reads the role from the user's own Firestore document.
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "administrator";
+    }
+
+    // Is the incoming data valid for a new user document?
+    function validUserData() {
+      let d = request.resource.data;
+      return d.email    is string  &&
+             d.fullName is string  &&
+             d.role     in ["citizen", "administrator"];
+    }
+
+    // Is the incoming report data valid?
+    function validReportData() {
+      let d = request.resource.data;
+      return d.userID      is string &&
+             d.name        is string &&
+             d.address     is string &&
+             d.status      in ["submitted", "pending_review",
+                               "approved", "rejected", "archived"];
+    }
+
+    // ── COLLECTION: users ─────────────────────────────────────
+    match /users/{uid} {
+
+      // Any signed-in user can read their own document.
+      // Admins can read all user documents.
+      allow read: if isOwner(uid) || isAdmin();
+
+      // Only the authenticated user can create their own document.
+      allow create: if isOwner(uid) && validUserData();
+
+      // Users can update only their own document.
+      // Admins can update any user document (e.g., change role).
+      allow update: if isOwner(uid) || isAdmin();
+
+      // Only admins can delete user documents.
+      allow delete: if isAdmin();
+    }
+
+    // ── COLLECTION: recyclingCenters ──────────────────────────
+    match /recyclingCenters/{centerID} {
+
+      // Any signed-in user can read active centers.
+      // Admins can read all (including pending_review).
+      allow read: if isSignedIn() &&
+        (resource.data.status == "active" || isAdmin());
+
+      // Only admins can create, update, or delete centers.
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── COLLECTION: reports ───────────────────────────────────
+    match /reports/{reportID} {
+
+      // Admins can read all reports.
+      // Citizens can read only their own reports.
+      allow read: if isAdmin() ||
+        (isSignedIn() && resource.data.userID == request.auth.uid);
+
+      // Any signed-in citizen can create a report for themselves.
+      allow create: if isSignedIn() &&
+        request.resource.data.userID == request.auth.uid &&
+        validReportData();
+
+      // Citizens can update only their own reports AND only when status = "submitted"
+      // (e.g., adding photos before an admin reviews it).
+      // Admins can update any report (approve/reject).
+      allow update: if isAdmin() ||
+        (isSignedIn() &&
+         resource.data.userID == request.auth.uid &&
+         resource.data.status == "submitted" &&
+         request.resource.data.status == "submitted");
+
+      // Only admins can delete reports.
+      allow delete: if isAdmin();
+    }
+
+    // ── COLLECTION: wasteTypes ────────────────────────────────
+    match /wasteTypes/{wasteTypeID} {
+
+      // Any signed-in user can read waste types (needed for search feature).
+      allow read: if isSignedIn();
+
+      // Only admins can manage waste type catalog.
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ── COLLECTION: centerWasteTypes ─────────────────────────
+    match /centerWasteTypes/{linkID} {
+
+      // Any signed-in user can read center-waste links.
+      allow read: if isSignedIn();
+
+      // Only admins can manage N:M links.
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ── COLLECTION: notifications ─────────────────────────────
+    match /notifications/{notifID} {
+
+      // Users can read only their own notifications.
+      allow read: if isSignedIn() &&
+        resource.data.userID == request.auth.uid;
+
+      // Only admins (or Cloud Functions server-side) can create notifications.
+      // In production, all writes should come from Cloud Functions (no client write).
+      allow create: if isAdmin();
+
+      // Users can update (mark as read) only their own notifications.
+      allow update: if isSignedIn() &&
+        resource.data.userID == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["readAt"]);
+
+      // Only admins can delete notifications.
+      allow delete: if isAdmin();
+    }
+
+  } // end /databases
+} // end service

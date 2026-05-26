@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "JaliscoRecicla",
+    "slug": "jaliscorecicla",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "mx.jalisco.recicla",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "JaliscoRecicla usa tu ubicación para mostrarte los centros de reciclaje más cercanos.",
+        "NSLocationAlwaysUsageDescription": "JaliscoRecicla usa tu ubicación para notificarte sobre recolecciones en tu colonia.",
+        "NSCameraUsageDescription": "JaliscoRecicla usa tu cámara para agregar fotos a tus reportes.",
+        "NSPhotoLibraryUsageDescription": "JaliscoRecicla accede a tu galería para seleccionar fotos para tus reportes."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#16a34a"
+      },
+      "package": "mx.jalisco.recicla",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_ANDROID_GOOGLE_MAPS_API_KEY"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-location",
+      "expo-image-picker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#16a34a",
+          "sounds": [
+            "./assets/notification.wav"
+          ]
+        }
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}
